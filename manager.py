@@ -2,67 +2,67 @@ import subprocess
 import sys
 from pathlib import Path
 
-worker_file = Path (__file__).with_name("worker.py")
-
-process = None
-
-print("Commands: start, status, stop, exit")
-
-
-
-import subprocess
-import sys
-from pathlib import Path
-
 worker_file = Path(__file__).with_name("worker.py")
-process = None
+workers = {}
 
-print("Commands: start, status, stop, exit")
+print("Commands: start <name>, stop <name>, list, exit")
 
 try:
     while True:
-        command = input("manager> ").strip().lower()
+        parts = input("manager> ").strip().split()
 
-        if command == "start":
+        if not parts:
+            continue
+
+        command = parts[0].lower()
+
+        if command == "start" and len(parts) == 2:
+            name = parts[1]
+            process = workers.get(name)
+
             if process is not None and process.poll() is None:
-                print("Worker is already running.")
+                print(f"{name} is already running.")
             else:
-                process = subprocess.Popen(
-                    [sys.executable, str(worker_file)]
+                workers[name] = subprocess.Popen(
+                    [sys.executable, str(worker_file), name]
                 )
-                print(f"Started worker. PID: {process.pid}")
+                print(f"Started {name}. PID: {workers[name].pid}")
 
-        elif command == "status":
-            if process is None:
-                print("Worker has not been started.")
-            elif process.poll() is None:
-                print(f"Worker is running. PID: {process.pid}")
-            else:
-                print(f"Worker stopped. Exit code: {process.returncode}")
+        elif command == "stop" and len(parts) == 2:
+            name = parts[1]
+            process = workers.get(name)
 
-        elif command == "stop":
             if process is not None and process.poll() is None:
                 process.terminate()
                 process.wait()
-                print("Worker stopped.")
+                print(f"Stopped {name}.")
             else:
-                print("No worker is running.")
+                print(f"{name} is not running.")
 
-        elif command == "exit":
+        elif command == "list" and len(parts) == 1:
+            if not workers:
+                print("No workers have been started.")
+
+            for name, process in workers.items():
+                status = (
+                    "running" if process.poll() is None else "stopped"
+                )
+                print(f"{name}: {status}, PID: {process.pid}")
+
+        elif command == "exit" and len(parts) == 1:
             break
 
         else:
-            print("Commands: start, status, stop, exit")
+            print("Commands: start <name>, stop <name>, list, exit")
 
 except (KeyboardInterrupt, EOFError):
     print("\nExiting manager.")
 
 finally:
-    if process is not None and process.poll() is None:
-        process.terminate()
-        process.wait()
-        print("Worker stopped.")
+    for name, process in workers.items():
+        if process.poll() is None:
+            process.terminate()
+            process.wait()
+            print(f"Stopped {name}.")
 
     print("Manager closed.")
-
-

@@ -1,5 +1,8 @@
+import sys
 import time
 
+name = sys.argv[1]
+
 while True:
-    print("Worker: I am running!", flush=True)
+    print(f"[{name}] I'm running!", flush=True)
     time.sleep(2)
